@@ -1,6 +1,7 @@
 # ============================================
-# 🚗 BRONX VEHICLE RC API V3.0
-# VahanX + CarInfo RTO + VehicleDetail.info
+# 🚗 BRONX VEHICLE RC API V4.0
+# VahanX + CarInfo + VehicleDetail + Bronx APIs
+# Father Name + Owner Number Included!
 # ============================================
 from flask import Flask, request, jsonify
 import requests
@@ -12,6 +13,10 @@ app = Flask(__name__)
 
 CREDIT = "BRONX_ULTRA"
 DEVELOPER = "BRONX_ULTRA"
+
+# Bronx APIs
+BRONX_VEHICLE_API = "https://bronx-web-api.onrender.com/api/key-bronx/vehicle"
+BRONX_VEH2NUM_API = "https://bronx-web-api.onrender.com/api/key-bronx/veh2num"
 
 @app.after_request
 def add_cors(response):
@@ -26,7 +31,7 @@ def home():
     base = request.host_url.rstrip('/')
     return f'''<!DOCTYPE html>
 <html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>🚗 BRONX RC API V3</title>
+<title>🚗 BRONX RC API V4</title>
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
 *{{margin:0;padding:0;box-sizing:border-box}}
@@ -47,10 +52,10 @@ pre{{color:#00ff88;font-family:monospace;font-size:10px;white-space:pre-wrap}}
 </style></head>
 <body>
 <div class="card">
-<h1>🚗 BRONX RC API V3</h1>
-<p style="color:#667;font-size:12px">VahanX + CarInfo RTO + VehicleDetail.info</p>
+<h1>🚗 BRONX RC API V4</h1>
+<p style="color:#667;font-size:12px">VahanX + CarInfo + Bronx APIs + Father Name</p>
 <div style="margin:10px 0">
-<span class="badge">🚗 VahanX</span><span class="badge">🏢 CarInfo RTO</span><span class="badge">📋 VehicleDetail</span>
+<span class="badge">🚗 VahanX</span><span class="badge">🏢 RTO</span><span class="badge">👤 Father Name</span><span class="badge">📱 Owner#</span><span class="badge">🔧 Bronx</span>
 </div>
 <div class="section">
 <p style="color:#0096ff;font-weight:700">🔗 API</p>
@@ -65,12 +70,12 @@ pre{{color:#00ff88;font-family:monospace;font-size:10px;white-space:pre-wrap}}
 async function lookup(){{
 var n=document.getElementById('rcInput').value.trim();if(!n)return alert('Enter RC!');
 var d=document.getElementById('result'),p=document.getElementById('resultData');
-d.classList.add('show');p.style.color='#ffb400';p.textContent='🔍 Searching 3 sources...';
+d.classList.add('show');p.style.color='#ffb400';p.textContent='🔍 Searching 5 sources...';
 try{{var r=await fetch('/rc?num='+encodeURIComponent(n));var j=await r.json();p.style.color='#00ff88';p.textContent=JSON.stringify(j,null,2)}}catch(e){{p.style.color='#ff3366';p.textContent='❌ '+e.message}}}}
 </script>
 </body></html>'''
 
-# ============ SOURCE 1: VahanX ============
+# ============ SOURCE 1: VahanX (WITH FATHER NAME) ============
 def get_vahanx_data(rc_number):
     url = f"https://vahanx.in/rc-search/{rc_number}"
     headers = {"User-Agent": "Mozilla/5.0 (Linux; Android 10) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Mobile Safari/537.36"}
@@ -90,8 +95,20 @@ def get_vahanx_data(rc_number):
                 return None
             except: return None
         
+        # ✅ FATHER NAME - Try multiple patterns
+        father_name = gv("Father's Name")
+        if not father_name:
+            # Try to find from text
+            text = soup.get_text()
+            father_match = re.search(r"Father'?s?\s*Name\s*[:]?\s*([A-Za-z.\s]+?)(?=Owner|Phone|Address|$)", text, re.IGNORECASE)
+            if father_match: father_name = father_match.group(1).strip()
+            # Try S/O, D/O, W/O pattern
+            so_match = re.search(r'(S/O|D/O|W/O)\s*SH\.?\s*([A-Za-z\s]+)', text, re.IGNORECASE)
+            if so_match: father_name = f"{so_match.group(1)} SH. {so_match.group(2).strip()}"
+        
         data = {
             "owner_name": gv("Owner Name"),
+            "father_name": father_name,
             "owner_serial": gv("Owner Serial No"),
             "financier": gv("Financier Name"),
             "phone": gv("Phone"),
@@ -114,7 +131,7 @@ def get_vahanx_data(rc_number):
         return {k: v for k, v in data.items() if v} if any(data.values()) else None
     except: return None
 
-# ============ SOURCE 2: CarInfo RTO Details ============
+# ============ SOURCE 2: CarInfo RTO ============
 def get_carinfo_rto(rc_number):
     url = f"https://www.carinfo.app/rto-vehicle-registration-detail/rto-details/{rc_number}"
     headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
@@ -122,16 +139,11 @@ def get_carinfo_rto(rc_number):
         resp = requests.get(url, headers=headers, timeout=15)
         soup = BeautifulSoup(resp.text, "html.parser")
         rto_info = {}
-        
-        # Extract RTO code
         match = re.match(r'^([A-Z]{2}\d{2})', rc_number)
         if match: rto_info["rto_code"] = match.group(1)
-        
-        # Try table parsing
         tables = soup.find_all('table')
         for table in tables:
-            rows = table.find_all('tr')
-            for row in rows:
+            for row in table.find_all('tr'):
                 cells = row.find_all('td')
                 if len(cells) >= 2:
                     key = cells[0].get_text(strip=True).lower()
@@ -141,63 +153,62 @@ def get_carinfo_rto(rc_number):
                     elif 'address' in key: rto_info['address'] = val
                     elif 'phone' in key: rto_info['phone'] = val
                     elif 'email' in key: rto_info['email'] = val
-                    elif 'pin' in key or 'pincode' in key: rto_info['pincode'] = val
+                    elif 'pin' in key: rto_info['pincode'] = val
                     elif 'city' in key: rto_info['city'] = val
-        
-        # Fallback text parsing
         if not rto_info.get('state'):
             text = soup.get_text()
-            patterns = {
-                'state': r'State\s*[:]?\s*([A-Za-z\s]+)',
-                'phone': r'Phone\s*[:]?\s*([+\d\s/-]+)',
-                'address': r'Address\s*[:]?\s*(.+?)(?=State|Phone|Email|$)',
-                'email': r'Email\s*[:]?\s*([\w@.]+)',
-            }
+            patterns = {'state': r'State\s*[:]?\s*([A-Za-z\s]+)', 'phone': r'Phone\s*[:]?\s*([+\d\s/-]+)'}
             for key, pat in patterns.items():
                 if not rto_info.get(key):
                     m = re.search(pat, text)
                     if m: rto_info[key] = m.group(1).strip()
-        
         return rto_info if len(rto_info) > 1 else None
     except: return None
 
 # ============ SOURCE 3: VehicleDetail.info ============
 def get_vehicledetail_info(rc_number):
     url = "https://know.vehicledetail.info/index.php"
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-        "Content-Type": "application/x-www-form-urlencoded"
-    }
+    headers = {"User-Agent": "Mozilla/5.0", "Content-Type": "application/x-www-form-urlencoded"}
     try:
         resp = requests.post(url, headers=headers, data={"number": rc_number}, timeout=15)
         soup = BeautifulSoup(resp.text, "html.parser")
         info = {}
-        
-        # Table parsing
-        tables = soup.find_all('table')
-        for table in tables:
-            rows = table.find_all('tr')
-            for row in rows:
+        for table in soup.find_all('table'):
+            for row in table.find_all('tr'):
                 cells = row.find_all('td')
                 if len(cells) >= 2:
-                    key = cells[0].get_text(strip=True).lower().replace(' ', '_').replace(':', '')
+                    key = cells[0].get_text(strip=True).lower().replace(' ', '_')
                     val = cells[1].get_text(strip=True)
                     if key and val: info[key] = val
-        
-        # Div parsing fallback
         if not info:
             text = soup.get_text()
-            patterns = {
-                'city': r'City\s*[:]?\s*([A-Za-z\s]+)',
-                'state': r'State\s*[:]?\s*([A-Za-z\s]+)',
-                'pin_code': r'PIN\s*Code\s*[:]?\s*(\d+)',
-                'phone': r'Phone\s*[:]?\s*([+\d\s/-]+)',
-            }
+            patterns = {'city': r'City\s*[:]?\s*([A-Za-z\s]+)', 'state': r'State\s*[:]?\s*([A-Za-z\s]+)', 'pin_code': r'PIN\s*Code\s*[:]?\s*(\d+)'}
             for key, pat in patterns.items():
                 m = re.search(pat, text)
                 if m: info[key] = m.group(1).strip()
-        
         return info if info else None
+    except: return None
+
+# ============ SOURCE 4: Bronx Vehicle API ============
+def get_bronx_vehicle_data(rc_number):
+    try:
+        url = f"{BRONX_VEHICLE_API}?key=op&vehicle={rc_number}"
+        resp = requests.get(url, timeout=15)
+        data = resp.json()
+        if data and not data.get('error'):
+            return data
+        return None
+    except: return None
+
+# ============ SOURCE 5: Bronx Veh2Num API (Owner Number) ============
+def get_bronx_veh2num_data(rc_number):
+    try:
+        url = f"{BRONX_VEH2NUM_API}?key=op&vehicle={rc_number}"
+        resp = requests.get(url, timeout=15)
+        data = resp.json()
+        if data and not data.get('error'):
+            return data
+        return None
     except: return None
 
 # ============ MAIN RC ENDPOINT ============
@@ -206,11 +217,7 @@ def rc_lookup():
     rc_number = request.args.get('num', '').strip().upper().replace(' ', '').replace('-', '')
     
     if not rc_number:
-        return jsonify({
-            "status": "error",
-            "message": "Missing RC number. Use: /rc?num=MH02FZ0555",
-            "credit": CREDIT
-        }), 400
+        return jsonify({"status": "error", "message": "Missing RC number. Use: /rc?num=MH02FZ0555", "credit": CREDIT}), 400
     
     result = {
         "status": "success",
@@ -220,10 +227,12 @@ def rc_lookup():
         "powered_by": "BRONX ULTRA API"
     }
     
-    # Get data from all 3 sources
+    # Get data from ALL 5 sources
     vahanx = get_vahanx_data(rc_number)
     rto = get_carinfo_rto(rc_number)
     vd = get_vehicledetail_info(rc_number)
+    bronx_vehicle = get_bronx_vehicle_data(rc_number)
+    bronx_veh2num = get_bronx_veh2num_data(rc_number)
     
     if vahanx:
         result["vahanx_details"] = vahanx
@@ -234,21 +243,46 @@ def rc_lookup():
     if vd:
         result["vehicle_detail_info"] = vd
     
+    # ✅ HIGHLIGHTED Bronx Vehicle Details
+    if bronx_vehicle:
+        result["🔧_bronx_vehicle_api"] = bronx_vehicle
+    
+    # ✅ HIGHLIGHTED Owner Number from Veh2Num
+    if bronx_veh2num:
+        result["📱_owner_number_api"] = {
+            "source": "Bronx Veh2Num API",
+            "data": bronx_veh2num,
+            "note": "⚠️ Vehicle to Owner Number Lookup"
+        }
+    
     # If nothing found
-    if not vahanx and not rto and not vd:
+    if not any([vahanx, rto, vd, bronx_vehicle, bronx_veh2num]):
         result["status"] = "error"
         result["message"] = "No data found. Try a different RC number."
         return jsonify(result), 404
     
-    # Add summary
+    # ✅ HIGHLIGHTED SUMMARY
     summary = {}
     if vahanx:
-        summary.update({k: v for k, v in vahanx.items() if v})
+        # Highlight Father Name
+        if vahanx.get('father_name'):
+            summary["👤_father_name"] = vahanx['father_name']
+        if vahanx.get('owner_name'):
+            summary["👤_owner_name"] = vahanx['owner_name']
+        if vahanx.get('phone'):
+            summary["📱_phone"] = vahanx['phone']
+        if vahanx.get('model'):
+            summary["🚗_vehicle"] = vahanx['model']
+        if vahanx.get('fuel'):
+            summary["⛽_fuel"] = vahanx['fuel']
+    
     if rto:
-        summary.update({f"rto_{k}": v for k, v in rto.items() if v})
-    if vd:
-        summary.update({f"vd_{k}": v for k, v in vd.items() if v})
-    result["summary"] = summary
+        summary.update({f"🏢_rto_{k}": v for k, v in rto.items() if v})
+    
+    if bronx_veh2num:
+        summary["📱_owner_number_highlighted"] = bronx_veh2num
+    
+    result["⚡_highlighted_summary"] = summary
     
     return jsonify(result)
 
@@ -256,9 +290,10 @@ def rc_lookup():
 @app.route('/test')
 def test():
     return jsonify({
-        "status": "✅ BRONX RC API V3 ONLINE",
+        "status": "✅ BRONX RC API V4 ONLINE",
         "endpoint": "/rc?num=MH02FZ0555",
-        "sources": ["VahanX", "CarInfo RTO", "VehicleDetail.info"],
+        "sources": ["VahanX (Father Name)", "CarInfo RTO", "VehicleDetail.info", "Bronx Vehicle API", "Bronx Veh2Num API"],
+        "features": ["Father Name", "Owner Number", "RTO Details", "Vehicle Details"],
         "credit": CREDIT,
         "developer": DEVELOPER
     })
@@ -269,6 +304,6 @@ def not_found(e):
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 3000))
-    print("🚗 BRONX VEHICLE RC API V3")
+    print("🚗 BRONX VEHICLE RC API V4")
     print(f"🚀 http://localhost:{port}")
     app.run(host='0.0.0.0', port=port)
