@@ -1,7 +1,6 @@
 # ============================================
-# 🚗 BRONX VEHICLE RC API V5.0
-# Clean Response – Owner Info First!
-# VahanX + FT-OSINT + Veh2Num + RTO
+# 🚗 BRONX VEHICLE RC API V6.0
+# Clean List Format • Proper Mobile • Advanced
 # ============================================
 from flask import Flask, request, jsonify
 import requests
@@ -11,8 +10,8 @@ import os
 
 app = Flask(__name__)
 
-CREDIT = "BRONX_ULTRA"
-DEVELOPER = "BRONX_ULTRA"
+CREDIT = "@BRONX_ULTRA"
+DEVELOPER = "@BRONX_ULTRA"
 
 # APIs
 FT_OSINT_API = "https://ft-osint-api.duckdns.org/api/vehicle"
@@ -31,14 +30,14 @@ def home():
     base = request.host_url.rstrip('/')
     return f'''<!DOCTYPE html>
 <html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>🚗 BRONX RC API V5</title>
+<title>🚗 BRONX RC API V6</title>
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
 *{{margin:0;padding:0;box-sizing:border-box}}
 body{{background:#000a14;color:#d0d8f0;font-family:'Rajdhani',sans-serif;min-height:100vh;display:flex;justify-content:center;align-items:center;padding:20px}}
 body::before{{content:'';position:fixed;inset:0;background:radial-gradient(ellipse at 50% 0%,rgba(0,150,255,.06),transparent 60%),radial-gradient(ellipse at 80% 100%,rgba(139,0,255,.04),transparent 60%);pointer-events:none;z-index:0}}
-.card{{background:rgba(5,15,35,.9);border:1px solid rgba(0,150,255,.1);border-radius:20px;padding:35px;max-width:600px;width:100%;text-align:center;position:relative;z-index:1;backdrop-filter:blur(20px)}}
-h1{{font-family:'Orbitron',sans-serif;font-size:26px;background:linear-gradient(90deg,#0096ff,#00d4ff,#8b00ff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:8px}}
+.card{{background:rgba(5,15,35,.9);border:1px solid rgba(0,150,255,.1);border-radius:20px;padding:30px;max-width:600px;width:100%;text-align:center;position:relative;z-index:1;backdrop-filter:blur(20px)}}
+h1{{font-family:'Orbitron',sans-serif;font-size:26px;background:linear-gradient(90deg,#0096ff,#00d4ff,#8b00ff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:6px}}
 .badge{{display:inline-block;background:rgba(0,255,136,.06);color:#00ff88;padding:4px 14px;border-radius:20px;font-size:10px;border:1px solid rgba(0,255,136,.12);margin:4px}}
 .section{{background:rgba(0,0,0,.5);border:1px solid rgba(0,150,255,.08);border-radius:12px;padding:16px;margin:14px 0;text-align:left}}
 code{{color:#00ff88;font-family:monospace;font-size:10px;word-break:break-all;display:block;margin:6px 0;background:rgba(0,0,0,.3);padding:8px;border-radius:6px}}
@@ -52,16 +51,16 @@ pre{{color:#00ff88;font-family:monospace;font-size:10px;white-space:pre-wrap}}
 </style></head>
 <body>
 <div class="card">
-<h1>🚗 BRONX RC API V5</h1>
-<p style="color:#667;font-size:12px">Owner Info First • FT-OSINT • Veh2Num • RTO</p>
+<h1>🚗 BRONX RC API V6</h1>
+<p style="color:#667;font-size:12px">Clean List • Owner Info First • Advanced</p>
 <div style="margin:10px 0">
-<span class="badge">👤 Owner First</span><span class="badge">🔧 FT-OSINT</span><span class="badge">📱 Veh2Num</span><span class="badge">🏢 RTO</span>
+<span class="badge">👤 Owner</span><span class="badge">📱 Mobile</span><span class="badge">🚗 Vehicle</span><span class="badge">🏢 RTO</span>
 </div>
-<div class="section"><p style="color:#0096ff;font-weight:700">🔗 API</p><code>GET /rc?num=KA01AB1234</code></div>
-<input type="text" id="rcInput" placeholder="RC Number (e.g., KA01AB1234)">
+<div class="section"><p style="color:#0096ff;font-weight:700">🔗 API</p><code>GET /rc?num=MH02FZ0555</code></div>
+<input type="text" id="rcInput" placeholder="RC Number (e.g., MH02FZ0555)">
 <button onclick="lookup()">🔍 LOOKUP</button>
 <div class="result" id="result"><pre id="resultData"></pre></div>
-<p style="color:#667;font-size:10px;margin-top:14px">BRONX_ULTRA</p>
+<p style="color:#667;font-size:10px;margin-top:14px">@BRONX_ULTRA</p>
 </div>
 <script>
 async function lookup(){{
@@ -83,67 +82,61 @@ def get_ft_osint_data(rc_number):
         return None
     except: return None
 
-# ============ SOURCE 2: VahanX (For Father Name) ============
-def get_vahanx_father_name(rc_number):
+# ============ SOURCE 2: VahanX ============
+def get_vahanx_data(rc_number):
     url = f"https://vahanx.in/rc-search/{rc_number}"
-    headers = {"User-Agent": "Mozilla/5.0 (Linux; Android 10) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Mobile Safari/537.36"}
+    headers = {"User-Agent": "Mozilla/5.0 (Linux; Android 10) AppleWebKit/537.36"}
     try:
         resp = requests.get(url, headers=headers, timeout=15)
         soup = BeautifulSoup(resp.text, "html.parser")
         text = soup.get_text()
         
-        # Try Father's Name span
-        father_name = None
-        try:
-            span = soup.find("span", string="Father's Name")
-            if span:
-                div = span.find_parent("div")
-                if div:
-                    p = div.find("p")
-                    if p: father_name = p.get_text(strip=True)
-        except: pass
+        def gv(label):
+            try:
+                span = soup.find("span", string=label)
+                if span:
+                    div = span.find_parent("div")
+                    if div:
+                        p = div.find("p")
+                        if p: return p.get_text(strip=True)
+                return None
+            except: return None
         
-        if not father_name:
-            so_match = re.search(r'(S/O|D/O|W/O)\s*SH\.?\s*([A-Za-z\s]+)', text, re.IGNORECASE)
-            if so_match: father_name = f"{so_match.group(1)} SH. {so_match.group(2).strip()}"
-        
-        # Try Owner Name
-        owner_name = None
-        try:
-            span = soup.find("span", string="Owner Name")
-            if span:
-                div = span.find_parent("div")
-                if div:
-                    p = div.find("p")
-                    if p: owner_name = p.get_text(strip=True)
-        except: pass
-        
-        # Try Phone
-        phone = None
-        try:
-            span = soup.find("span", string="Phone")
-            if span:
-                div = span.find_parent("div")
-                if div:
-                    p = div.find("p")
-                    if p: phone = p.get_text(strip=True)
-        except: pass
+        father = gv("Father's Name")
+        if not father:
+            so = re.search(r'(S/O|D/O|W/O)\s*SH\.?\s*([A-Za-z\s]+)', text, re.IGNORECASE)
+            if so: father = f"{so.group(1)} SH. {so.group(2).strip()}"
         
         return {
-            "father_name": father_name,
-            "owner_name": owner_name,
-            "phone": phone
+            "father_name": father,
+            "owner_name": gv("Owner Name"),
+            "phone": gv("Phone"),
+            "address": gv("Address"),
+            "city": gv("City Name"),
+            "rto": gv("Registered RTO"),
+            "reg_date": gv("Registration Date"),
+            "model": gv("Model Name"),
+            "fuel": gv("Fuel Type"),
+            "insurance_company": gv("Insurance Company"),
+            "insurance_upto": gv("Insurance Upto"),
+            "fitness_upto": gv("Fitness Upto"),
+            "tax_upto": gv("Tax Upto"),
+            "puc_upto": gv("PUC Upto"),
         }
     except: return {}
 
 # ============ SOURCE 3: Bronx Veh2Num ============
-def get_bronx_veh2num_data(rc_number):
+def get_bronx_veh2num(rc_number):
     try:
         url = f"{BRONX_VEH2NUM_API}?key=op&vehicle={rc_number}"
         resp = requests.get(url, timeout=15)
         data = resp.json()
-        if data and not data.get('error'):
-            return data
+        if data and data.get('mobile_number'):
+            return data.get('mobile_number')
+        if data and isinstance(data, dict):
+            # Search for mobile number in response
+            for key in ['mobile_number', 'mobile', 'phone', 'number', 'owner_number']:
+                if data.get(key): return str(data[key])
         return None
     except: return None
 
@@ -154,20 +147,21 @@ def get_carinfo_rto(rc_number):
     try:
         resp = requests.get(url, headers=headers, timeout=15)
         soup = BeautifulSoup(resp.text, "html.parser")
-        rto_info = {}
+        info = {}
         match = re.match(r'^([A-Z]{2}\d{2})', rc_number)
-        if match: rto_info["rto_code"] = match.group(1)
-        tables = soup.find_all('table')
-        for table in tables:
+        if match: info["rto_code"] = match.group(1)
+        for table in soup.find_all('table'):
             for row in table.find_all('tr'):
                 cells = row.find_all('td')
                 if len(cells) >= 2:
-                    key = cells[0].get_text(strip=True).lower()
-                    val = cells[1].get_text(strip=True)
-                    if 'state' in key: rto_info['state'] = val
-                    elif 'address' in key: rto_info['address'] = val
-                    elif 'phone' in key: rto_info['phone'] = val
-        return rto_info if len(rto_info) > 1 else None
+                    k = cells[0].get_text(strip=True).lower()
+                    v = cells[1].get_text(strip=True)
+                    if 'state' in k: info['state'] = v
+                    elif 'address' in k: info['rto_address'] = v
+                    elif 'phone' in k: info['rto_phone'] = v
+                    elif 'email' in k: info['rto_email'] = v
+                    elif 'city' in k: info['rto_city'] = v
+        return info if len(info) > 1 else None
     except: return None
 
 # ============ MAIN RC ENDPOINT ============
@@ -176,145 +170,129 @@ def rc_lookup():
     rc_number = request.args.get('num', '').strip().upper().replace(' ', '').replace('-', '')
     
     if not rc_number:
-        return jsonify({"status": "error", "message": "Missing RC number. Use: /rc?num=KA01AB1234", "credit": CREDIT}), 400
+        return jsonify({"status": "error", "message": "Missing RC number", "credit": CREDIT}), 400
     
-    # Get data from all sources
-    ft_data = get_ft_osint_data(rc_number)
-    vahanx = get_vahanx_father_name(rc_number)
-    veh2num = get_bronx_veh2num_data(rc_number)
+    # Get all data
+    ft = get_ft_osint_data(rc_number)
+    vx = get_vahanx_data(rc_number)
+    v2n = get_bronx_veh2num(rc_number)
     rto = get_carinfo_rto(rc_number)
     
-    # ============ BUILD RESPONSE ============
+    if not ft and not vx:
+        return jsonify({"status": "error", "message": "No data found", "credit": CREDIT}), 404
+    
+    # ============ BUILD CLEAN RESPONSE ============
     result = {
         "status": "success",
         "rc_number": rc_number,
         "credit": CREDIT,
-        "developer": DEVELOPER,
-        "powered_by": "BRONX ULTRA API"
+        "powered_by": "@BRONX_ULTRA"
     }
     
-    # ============ PRIMARY OWNER INFO (FIRST) ============
-    owner_info = {}
+    # ============ 👤 OWNER INFORMATION ============
+    ft_owner = ft.get("owner", {}) if ft else {}
+    ft_addr = ft.get("address", {}) if ft else {}
+    ft_reg = ft.get("registration", {}) if ft else {}
+    ft_rto_contact = ft.get("rto_contact", {}) if ft else {}
     
-    # Owner Name
-    owner_info["owner_name"] = (
-        (ft_data.get("owner", {}) or {}).get("name") or 
-        vahanx.get("owner_name") or 
-        "N/A"
-    )
+    owner_name = ft_owner.get("name") or vx.get("owner_name") or "N/A"
+    father_name = ft_owner.get("father_name") or vx.get("father_name") or "N/A"
+    owner_mobile = v2n or vx.get("phone") or ft_rto_contact.get("phone") or "N/A"
+    rto_phone = ft_rto_contact.get("phone") or (rto.get("rto_phone") if rto else None) or "N/A"
     
-    # Father Name
-    owner_info["father_name"] = (
-        (ft_data.get("owner", {}) or {}).get("father_name") or 
-        vahanx.get("father_name") or 
-        "N/A"
-    )
+    present_addr = ft_addr.get("present", "").strip(", ") or vx.get("address") or "N/A"
+    permanent_addr = ft_addr.get("permanent", "").strip(", ") or present_addr
+    city = ft_addr.get("city") or vx.get("city") or "N/A"
+    pincode = ft_addr.get("pincode") or "N/A"
+    state = (rto.get("state") if rto else None) or "N/A"
     
-    # Owner Mobile Number
-    owner_mobile = "N/A"
-    if veh2num:
-        owner_mobile = veh2num.get("number") or veh2num.get("mobile") or veh2num.get("phone") or str(veh2num)
-    if owner_mobile == "N/A" and vahanx.get("phone"):
-        owner_mobile = vahanx["phone"]
-    if owner_mobile == "N/A" and ft_data:
-        rto_contact = ft_data.get("rto_contact", {}) or {}
-        owner_mobile = rto_contact.get("phone", "N/A")
-    owner_info["owner_mobile_number"] = owner_mobile
+    result["👤_owner_details"] = {
+        "owner_name": owner_name,
+        "father_name": father_name,
+        "owner_mobile_number": owner_mobile,
+        "rto_phone_number": rto_phone,
+        "present_address": present_addr,
+        "permanent_address": permanent_addr,
+        "city": city,
+        "pincode": pincode,
+        "state": state,
+    }
     
-    # Address
-    address_info = (ft_data.get("address", {}) or {})
-    owner_info["address"] = address_info.get("present") or address_info.get("permanent") or "N/A"
-    
-    # City
-    owner_info["city"] = (
-        address_info.get("city") or 
-        (ft_data.get("registration", {}) or {}).get("authority", "").split(",")[-1].strip() or 
-        "N/A"
-    )
-    
-    # Pincode
-    owner_info["pincode"] = address_info.get("pincode") or "N/A"
-    
-    # State
-    owner_info["state"] = rto.get("state") if rto else "N/A"
-    
-    # ✅ PUT OWNER INFO FIRST
-    result["📋_owner_info"] = owner_info
-    
-    # ============ VEHICLE INFO ============
-    if ft_data:
-        vehicle_data = ft_data.get("vehicle", {}) or {}
-        result["🚗_vehicle_info"] = {
-            "manufacturer": vehicle_data.get("manufacturer"),
-            "model": vehicle_data.get("model"),
-            "variant": vehicle_data.get("variant"),
-            "fuel": vehicle_data.get("fuel"),
-            "cc": vehicle_data.get("cc"),
-            "class": vehicle_data.get("class"),
-            "seating": vehicle_data.get("seating"),
-            "type": vehicle_data.get("type"),
-            "commercial": vehicle_data.get("commercial")
+    # ============ 🚗 VEHICLE INFORMATION ============
+    if ft:
+        vh = ft.get("vehicle", {}) or {}
+        result["🚗_vehicle_details"] = {
+            "manufacturer": vh.get("manufacturer"),
+            "model": vh.get("model"),
+            "variant": vh.get("variant"),
+            "fuel_type": vh.get("fuel"),
+            "engine_cc": vh.get("cc"),
+            "vehicle_class": vh.get("class"),
+            "seating_capacity": vh.get("seating"),
+            "vehicle_type": vh.get("type"),
+            "commercial": vh.get("commercial"),
         }
     
-    # ============ REGISTRATION INFO ============
-    if ft_data:
-        reg_data = ft_data.get("registration", {}) or {}
-        result["📅_registration_info"] = {
-            "rto_code": reg_data.get("rto_code"),
-            "rto_name": reg_data.get("rto"),
-            "authority": reg_data.get("authority"),
-            "registration_date": reg_data.get("date")
+    # ============ 📅 REGISTRATION DETAILS ============
+    if ft:
+        result["📅_registration_details"] = {
+            "rto_code": ft_reg.get("rto_code"),
+            "rto_name": ft_reg.get("rto"),
+            "authority": ft_reg.get("authority"),
+            "registration_date": ft_reg.get("date") or vx.get("reg_date"),
         }
     
-    # ============ RTO CONTACT ============
-    if ft_data:
-        rto_contact = ft_data.get("rto_contact", {}) or {}
-        if rto_contact.get("phone"):
-            result["🏢_rto_contact"] = rto_contact
-    
-    # ============ INSURANCE INFO ============
-    if ft_data:
-        insurance_data = ft_data.get("insurance", {}) or {}
-        if insurance_data:
-            result["🛡️_insurance_info"] = {
-                "company": insurance_data.get("company"),
-                "valid_upto": insurance_data.get("valid_upto"),
-                "expired": insurance_data.get("expired")
+    # ============ 🛡️ INSURANCE DETAILS ============
+    if ft:
+        ins = ft.get("insurance", {}) or {}
+        if ins:
+            result["🛡️_insurance_details"] = {
+                "company": ins.get("company") or vx.get("insurance_company"),
+                "valid_upto": ins.get("valid_upto") or vx.get("insurance_upto"),
+                "expired": ins.get("expired"),
+                "policy_number": ins.get("policy_no"),
             }
     
-    # ============ FINANCIER ============
-    if ft_data:
-        financier = ft_data.get("financier", {}) or {}
-        if financier.get("name"):
-            result["💰_financier"] = financier
-    
-    # ============ IDENTIFICATION ============
-    if ft_data:
-        ident = ft_data.get("identification", {}) or {}
+    # ============ 🔢 IDENTIFICATION ============
+    if ft:
+        ident = ft.get("identification", {}) or {}
         if ident:
-            result["🔢_identification"] = ident
+            result["🔢_identification"] = {
+                "chassis_number": ident.get("chassis"),
+                "engine_number": ident.get("engine"),
+            }
     
-    # ============ FITNESS & TAX ============
-    if ft_data:
-        fitness = ft_data.get("fitness", {}) or {}
-        if fitness:
-            result["✅_fitness_tax"] = fitness
+    # ============ 💰 FINANCIER ============
+    if ft:
+        fin = ft.get("financier", {}) or {}
+        if fin.get("name"):
+            result["💰_financier"] = {"financier_name": fin["name"]}
     
-    # ============ PUC ============
-    if ft_data:
-        puc = ft_data.get("puc", {}) or {}
-        if puc.get("valid_upto"):
-            result["🌿_puc"] = puc
+    # ============ ✅ FITNESS & TAX ============
+    fit_data = {}
+    if ft:
+        fit = ft.get("fitness", {}) or {}
+        if fit.get("fitness_upto") or vx.get("fitness_upto"):
+            fit_data["fitness_valid_upto"] = fit.get("fitness_upto") or vx.get("fitness_upto")
+        if fit.get("tax_upto") or vx.get("tax_upto"):
+            fit_data["tax_valid_upto"] = fit.get("tax_upto") or vx.get("tax_upto")
+    if fit_data:
+        result["✅_fitness_tax"] = fit_data
     
-    # ============ ADDITIONAL RTO INFO ============
+    # ============ 🌿 PUC ============
+    if ft:
+        puc = ft.get("puc", {}) or {}
+        if puc.get("valid_upto") or vx.get("puc_upto"):
+            result["🌿_puc_details"] = {
+                "puc_valid_upto": puc.get("valid_upto") or vx.get("puc_upto"),
+                "puc_number": puc.get("no"),
+            }
+    
+    # ============ 🏢 RTO CONTACT ============
     if rto:
-        result["🏢_additional_rto"] = rto
-    
-    # If nothing found
-    if not ft_data and not vahanx and not veh2num:
-        result["status"] = "error"
-        result["message"] = "No data found. Try a different RC number."
-        return jsonify(result), 404
+        result["🏢_rto_contact"] = {k: v for k, v in rto.items() if v}
+    elif ft_rto_contact:
+        result["🏢_rto_contact"] = {"rto_phone": ft_rto_contact.get("phone")}
     
     return jsonify(result)
 
@@ -322,10 +300,9 @@ def rc_lookup():
 @app.route('/test')
 def test():
     return jsonify({
-        "status": "✅ BRONX RC API V5 ONLINE",
-        "endpoint": "/rc?num=KA01AB1234",
-        "sources": ["FT-OSINT API", "VahanX (Father Name)", "Bronx Veh2Num", "CarInfo RTO"],
-        "features": ["Owner Info First", "Father Name", "Mobile Number", "Address", "City", "Pincode"],
+        "status": "✅ BRONX RC API V6 ONLINE",
+        "endpoint": "/rc?num=MH02FZ0555",
+        "format": "Clean List • Owner First",
         "credit": CREDIT
     })
 
@@ -335,6 +312,6 @@ def not_found(e):
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 3000))
-    print("🚗 BRONX VEHICLE RC API V5")
+    print("🚗 BRONX VEHICLE RC API V6")
     print(f"🚀 http://localhost:{port}")
     app.run(host='0.0.0.0', port=port)
