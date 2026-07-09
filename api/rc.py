@@ -164,7 +164,7 @@ def get_carinfo_rto(rc_number):
         return info if len(info) > 1 else None
     except: return None
 
-# ============ SOURCE 5: VehicleInfo Worker API (FIXED) ============
+# ============ SOURCE 5: VehicleInfo Worker API (FULLY FIXED) ============
 def get_vehicleinfo_worker(rc_number):
     try:
         url = f"{VEHICLEINFO_WORKER_API}?vehicle_number={rc_number}"
@@ -172,87 +172,146 @@ def get_vehicleinfo_worker(rc_number):
         data = resp.json()
         
         if not data or not data.get('success'):
+            print(f"Worker API: No success for {rc_number}")
             return None
         
         # Main data is inside vehicle_data
         vd = data.get('vehicle_data', {})
         rto_data = vd.get('rtoData', {})
         
+        if not vd:
+            print(f"Worker API: No vehicle_data for {rc_number}")
+            return None
+        
         result = {}
         
         # === OWNER DETAILS ===
-        result["owner_name"] = vd.get("owner") or ""
-        result["father_name"] = vd.get("ownerFatherName") or ""
+        if vd.get("owner") and vd["owner"].strip():
+            result["owner_name"] = vd["owner"].strip()
         
-        # Mobile - try from top level and nested
-        mobile = data.get("mobile_number") or vd.get("mobile_number") or ""
-        if mobile and mobile != "Not Available":
-            result["phone"] = mobile
+        if vd.get("ownerFatherName") and vd["ownerFatherName"].strip():
+            result["father_name"] = vd["ownerFatherName"].strip()
         
-        # Address
-        present = vd.get("presentAddress", "").strip(", ") or ""
-        permanent = vd.get("permAddress", "").strip(", ") or ""
-        if present:
+        # Mobile - check all possible locations
+        mobile = data.get("mobile_number") or ""
+        if mobile and mobile != "Not Available" and mobile.strip():
+            result["phone"] = mobile.strip()
+        
+        # Address - clean up
+        present = vd.get("presentAddress", "").strip().strip(',').strip()
+        permanent = vd.get("permAddress", "").strip().strip(',').strip()
+        
+        if present and present.replace(',', '').strip():
             result["present_address"] = present
-        if permanent:
+        if permanent and permanent.replace(',', '').strip():
             result["address"] = permanent
         
-        pincode = vd.get("pincode") or ""
-        if pincode:
-            result["pincode"] = pincode
+        # Pincode
+        if vd.get("pincode") and vd["pincode"].strip():
+            result["pincode"] = vd["pincode"].strip()
         
-        if rto_data.get("statename"):
-            result["state"] = rto_data["statename"]
+        # State from RTO data
+        if rto_data.get("statename") and rto_data["statename"].strip():
+            result["state"] = rto_data["statename"].strip()
         
         # === VEHICLE DETAILS ===
-        result["manufacturer"] = vd.get("manufacturer") or ""
-        result["model"] = vd.get("vehicle") or ""
-        result["variant"] = vd.get("variant") or ""
-        result["fuel"] = vd.get("fuelType") or ""
-        result["engine_cc"] = str(vd.get("cubicCapacity")) if vd.get("cubicCapacity") else ""
-        result["vehicle_class"] = vd.get("vehicleClass") or ""
-        result["vehicle_type"] = vd.get("vehicleType") or ""
-        result["seating_capacity"] = str(vd.get("seatCapacity")) if vd.get("seatCapacity") else ""
-        result["is_commercial"] = vd.get("isCommercial")
+        if vd.get("manufacturer") and vd["manufacturer"].strip():
+            result["manufacturer"] = vd["manufacturer"].strip()
+        
+        if vd.get("vehicle") and vd["vehicle"].strip():
+            result["model"] = vd["vehicle"].strip()
+        
+        if vd.get("variant") and vd["variant"].strip():
+            result["variant"] = vd["variant"].strip()
+        
+        if vd.get("fuelType") and vd["fuelType"].strip():
+            result["fuel"] = vd["fuelType"].strip()
+        
+        if vd.get("cubicCapacity"):
+            result["engine_cc"] = str(vd["cubicCapacity"])
+        
+        if vd.get("vehicleClass") and vd["vehicleClass"].strip():
+            result["vehicle_class"] = vd["vehicleClass"].strip()
+        
+        if vd.get("vehicleType") and vd["vehicleType"].strip():
+            result["vehicle_type"] = vd["vehicleType"].strip()
+        
+        if vd.get("seatCapacity"):
+            result["seating_capacity"] = str(vd["seatCapacity"])
+        
+        if vd.get("isCommercial") is not None:
+            result["is_commercial"] = vd["isCommercial"]
         
         # === REGISTRATION DETAILS ===
-        result["reg_date"] = vd.get("regDate") or ""
-        result["rto"] = rto_data.get("rtoName") or vd.get("regAuthority") or ""
-        result["rto_code"] = vd.get("rtoCode") or rto_data.get("rtoCode") or ""
-        result["reg_authority"] = vd.get("regAuthority") or ""
+        if vd.get("regDate") and vd["regDate"].strip():
+            result["reg_date"] = vd["regDate"].strip()
+        
+        if rto_data.get("rtoName") and rto_data["rtoName"].strip():
+            result["rto"] = rto_data["rtoName"].strip()
+        elif vd.get("regAuthority") and vd["regAuthority"].strip():
+            result["rto"] = vd["regAuthority"].strip()
+        
+        if vd.get("rtoCode") and vd["rtoCode"].strip():
+            result["rto_code"] = vd["rtoCode"].strip()
+        elif rto_data.get("rtoCode") and rto_data["rtoCode"].strip():
+            result["rto_code"] = rto_data["rtoCode"].strip()
+        
+        if vd.get("regAuthority") and vd["regAuthority"].strip():
+            result["reg_authority"] = vd["regAuthority"].strip()
         
         # === INSURANCE ===
-        result["insurance_company"] = vd.get("insuranceCompanyName") or ""
-        result["insurance_upto"] = vd.get("insuranceUpto") or ""
-        result["policy_number"] = vd.get("insurancePolicyNumber") or ""
-        result["insurance_expired"] = vd.get("insuranceExpired")
+        if vd.get("insuranceCompanyName") and vd["insuranceCompanyName"].strip():
+            result["insurance_company"] = vd["insuranceCompanyName"].strip()
+        
+        if vd.get("insuranceUpto") and vd["insuranceUpto"].strip():
+            result["insurance_upto"] = vd["insuranceUpto"].strip()
+        
+        if vd.get("insurancePolicyNumber") and vd["insurancePolicyNumber"].strip():
+            result["policy_number"] = vd["insurancePolicyNumber"].strip()
+        
+        if vd.get("insuranceExpired") is not None:
+            result["insurance_expired"] = vd["insuranceExpired"]
         
         # === CHASSIS & ENGINE ===
-        result["chassis_number"] = vd.get("chassis") or data.get("chassis_number") or ""
-        result["engine_number"] = vd.get("engine") or data.get("engine_number") or ""
+        if vd.get("chassis") and vd["chassis"].strip():
+            result["chassis_number"] = vd["chassis"].strip()
+        elif data.get("chassis_number") and data["chassis_number"].strip():
+            result["chassis_number"] = data["chassis_number"].strip()
+        
+        if vd.get("engine") and vd["engine"].strip():
+            result["engine_number"] = vd["engine"].strip()
+        elif data.get("engine_number") and data["engine_number"].strip():
+            result["engine_number"] = data["engine_number"].strip()
         
         # === FINANCIER ===
-        result["financier"] = vd.get("financerName") or ""
+        if vd.get("financerName") and vd["financerName"].strip():
+            result["financier"] = vd["financerName"].strip()
         
         # === PUC ===
-        result["puc_upto"] = vd.get("puccValidUpto") or ""
-        result["puc_number"] = vd.get("puccNumber") or ""
+        if vd.get("puccValidUpto") and vd["puccValidUpto"].strip():
+            result["puc_upto"] = vd["puccValidUpto"].strip()
+        
+        if vd.get("puccNumber") and vd["puccNumber"].strip():
+            result["puc_number"] = vd["puccNumber"].strip()
         
         # === MANUFACTURER DETAILS ===
-        result["manufacturer_year"] = vd.get("manufacturerYear") or ""
-        result["vehicle_age"] = vd.get("vehicleAge") or ""
+        if vd.get("manufacturerYear") and vd["manufacturerYear"].strip():
+            result["manufacturer_year"] = vd["manufacturerYear"].strip()
+        
+        if vd.get("vehicleAge") and vd["vehicleAge"].strip():
+            result["vehicle_age"] = vd["vehicleAge"].strip()
         
         # === STATUS ===
-        result["status"] = vd.get("statusDesc") or vd.get("status") or ""
-        result["data_status"] = vd.get("dataStatus")
+        if vd.get("statusDesc") and vd["statusDesc"].strip():
+            result["status"] = vd["statusDesc"].strip()
+        elif vd.get("status"):
+            result["status"] = str(vd["status"])
         
-        # Clean empty strings to None
-        result = {k: v for k, v in result.items() if v not in [None, "", "Not Available"]}
-        
+        print(f"Worker API: Extracted {len(result)} fields for {rc_number}")
         return result if result else None
         
     except Exception as e:
-        print(f"Worker API Error: {e}")
+        print(f"Worker API Error for {rc_number}: {e}")
         return None
 
 # ============ MAIN RC ENDPOINT ============
@@ -268,7 +327,7 @@ def rc_lookup():
     vx = get_vahanx_data(rc_number)
     v2n = get_bronx_veh2num(rc_number)
     rto = get_carinfo_rto(rc_number)
-    wk = get_vehicleinfo_worker(rc_number)  # NOW WORKING PROPERLY
+    wk = get_vehicleinfo_worker(rc_number)  # NOW FULLY WORKING
     
     if not ft and not vx and not wk:
         return jsonify({"status": "error", "message": "No data found", "credit": CREDIT}), 404
@@ -358,7 +417,7 @@ def rc_lookup():
             "commercial": vh.get("commercial"),
         })
     
-    # Fill gaps with Worker data (NOW WITH FULL DATA)
+    # Fill gaps with Worker data
     if wk:
         if not vehicle_details.get("manufacturer"):
             vehicle_details["manufacturer"] = wk.get("manufacturer")
@@ -406,7 +465,6 @@ def rc_lookup():
             "registration_date": ft_reg.get("date"),
         })
     
-    # Fill with Worker/VahanX
     if not reg_details.get("registration_date"):
         reg_details["registration_date"] = (wk.get("reg_date") or vx.get("reg_date"))
     if not reg_details.get("rto_code"):
@@ -434,7 +492,6 @@ def rc_lookup():
                 "policy_number": ins.get("policy_no"),
             })
     
-    # Fill with VahanX/Worker (NOW FULL DATA)
     if not ins_details.get("company"):
         ins_details["company"] = (wk.get("insurance_company") or vx.get("insurance_company"))
     if not ins_details.get("valid_upto"):
@@ -460,7 +517,6 @@ def rc_lookup():
                 "engine_number": ident.get("engine"),
             })
     
-    # Fill with Worker (NOW WORKING)
     if not ident_details.get("chassis_number") and wk.get("chassis_number"):
         ident_details["chassis_number"] = wk["chassis_number"]
     if not ident_details.get("engine_number") and wk.get("engine_number"):
@@ -540,7 +596,7 @@ def test():
         "format": "Clean List • Owner First",
         "sources": [
             "ft-osint-api",
-            "vahanx.in", 
+            "vahanx.in",
             "bronx-veh2num",
             "carinfo.app",
             "vehicleinfo-worker (FIXED)"
@@ -554,7 +610,7 @@ def not_found(e):
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 3000))
-    print("🚗 BRONX VEHICLE RC API V6.0 - ALL 5 SOURCES")
+    print("🚗 BRONX VEHICLE RC API V6.0 - ALL 5 SOURCES ACTIVE")
     print("📡 FT-OSINT + VahanX + Veh2Num + CarInfo + Worker API")
     print(f"🚀 http://localhost:{port}")
     app.run(host='0.0.0.0', port=port)
