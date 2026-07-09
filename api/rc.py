@@ -72,7 +72,7 @@ try{{var r=await fetch('/rc?num='+encodeURIComponent(n));var j=await r.json();p.
 # ============ SOURCE 1: FT-OSINT ============
 def get_ft_osint(rc_number):
     try:
-        url = f"{FT_OSINT_API}?key=bronx&vehicle={rc_number}"
+        url = f"{FT_OSINT_API}?key=bronx-ultra-king-ft-bro-op&vehicle={rc_number}"
         resp = requests.get(url, timeout=15)
         data = resp.json()
         if data and data.get('success'):
@@ -218,10 +218,10 @@ def rc_lookup():
         "response_time_seconds": response_time,
         "timestamp": datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
         "sources": {
-            "ft_osint": "✅" if ft else "❌",
+            "bronx": "✅" if ft else "❌",
             "workers_api": "✅" if worker else "❌",
             "veh2num": "✅" if v2n else "❌",
-            "vahanx": "✅" if vx else "❌",
+            "ultra": "✅" if vx else "❌",
             "carinfo": "✅" if rto else "❌"
         }
     }
