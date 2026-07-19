@@ -277,12 +277,12 @@ def rc_lookup():
         "response_time_seconds": response_time,
         "timestamp": datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
         "sources": {
-            "leakapi_vehicle": "✅" if leakapi_v else "❌",
-            "leakapi_registration": "✅" if leakapi_r else "❌",
+            "1": "✅" if leakapi_v else "❌",
+            "2": "✅" if leakapi_r else "❌",
             "veh2num_mobile": "✅" if v2n else "❌",
-            "ummym": "✅" if ummym else "❌",
-            "vahanx_scraper": "✅" if vx else "❌",
-            "carinfo_rto": "✅" if rto else "❌"
+            "4": "✅" if ummym else "❌",
+            "5": "✅" if vx else "❌",
+            "6": "✅" if rto else "❌"
         }
     }
     
