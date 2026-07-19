@@ -5,15 +5,17 @@ import re
 import os
 import time
 from datetime import datetime
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 app = Flask(__name__)
 
 CREDIT = "@BRONX_ULTRA"
 
-# ============ ALL APIs ============
-FT_OSINT_API = "https://ft-osint-api.duckdns.org/api/vehicle"
+# ============ ALL APIs (UPDATED) ============
 BRONX_VEH2NUM_API = "https://bronx-web-api.onrender.com/api/key-bronx/veh2num"
-WORKERS_API = "https://vehicleinfo.noobgamingv40.workers.dev/fetch"
+LEAKAPI_VEHICLE = "https://leakapi.dpdns.org/api/vehicle"
+LEAKAPI_REG = "https://leakapi.dpdns.org/vehicle-info"
+UMMMYM_API = "https://ummmym.onrender.com/"
 
 @app.after_request
 def add_cors(response):
@@ -28,7 +30,7 @@ def home():
     base = request.host_url.rstrip('/')
     return f'''<!DOCTYPE html>
 <html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>🚗 BRONX RC API V7 - ALL IN ONE</title>
+<title>🚗 BRONX RC API V8 - ALL IN ONE</title>
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
 *{{margin:0;padding:0;box-sizing:border-box}}
@@ -49,8 +51,8 @@ pre{{color:#00ff88;font-family:monospace;font-size:10px;white-space:pre-wrap}}
 </style></head>
 <body>
 <div class="card">
-<h1>🚗 BRONX RC API V7</h1>
-<p style="color:#667;font-size:12px">ALL-IN-ONE • FT-OSINT • Worker • Veh2Num • CarInfo</p>
+<h1>🚗 BRONX RC API V8</h1>
+<p style="color:#667;font-size:12px">ALL-IN-ONE • LeakAPI • Veh2Num • UmmmyM • CarInfo</p>
 <div style="margin:10px 0">
 <span class="badge">👤 Owner</span><span class="badge">📱 Mobile</span><span class="badge">🚗 Vehicle</span><span class="badge">🏢 RTO</span><span class="badge">🛡️ Insurance</span>
 </div>
@@ -58,7 +60,7 @@ pre{{color:#00ff88;font-family:monospace;font-size:10px;white-space:pre-wrap}}
 <input type="text" id="rcInput" placeholder="RC Number (e.g., MH02FZ0555)">
 <button onclick="lookup()">🔍 LOOKUP ALL SOURCES</button>
 <div class="result" id="result"><pre id="resultData"></pre></div>
-<p style="color:#667;font-size:10px;margin-top:14px">{CREDIT} | V7 ALL-IN-ONE</p>
+<p style="color:#667;font-size:10px;margin-top:14px">{CREDIT} | V8 ALL-IN-ONE</p>
 </div>
 <script>
 async function lookup(){{
@@ -69,52 +71,88 @@ try{{var r=await fetch('/rc?num='+encodeURIComponent(n));var j=await r.json();p.
 </script>
 </body></html>'''
 
-# ============ SOURCE 1: FT-OSINT ============
-def get_ft_osint(rc_number):
+# ============ SOURCE 1: LeakAPI /api/vehicle ============
+def get_leakapi_vehicle(rc_number):
     try:
-        url = f"{FT_OSINT_API}?key=bronx-ultra-king-ft-bro-op&vehicle={rc_number}"
-        resp = requests.get(url, timeout=15)
-        data = resp.json()
-        if data and data.get('success'):
-            return data
-        return None
-    except:
-        return None
-
-# ============ SOURCE 2: Workers API ============
-def get_workers_data(rc_number):
-    try:
-        url = f"{WORKERS_API}?vehicle_number={rc_number}"
-        resp = requests.get(url, timeout=15)
+        url = f"{LEAKAPI_VEHICLE}?vehicle={rc_number}"
+        resp = requests.get(url, timeout=25)
         data = resp.json()
         if data:
+            # Remove proxy info if present
+            if isinstance(data, dict) and '_proxy' in data:
+                del data['_proxy']
             return data
         return None
     except:
         return None
 
-# ============ SOURCE 3: Bronx Veh2Num ============
+# ============ SOURCE 2: LeakAPI /vehicle-info ============
+def get_leakapi_reg(rc_number):
+    try:
+        url = f"{LEAKAPI_REG}?registration_number={rc_number}"
+        resp = requests.get(url, timeout=25)
+        data = resp.json()
+        if data:
+            if isinstance(data, dict) and '_proxy' in data:
+                del data['_proxy']
+            return data
+        return None
+    except:
+        return None
+
+# ============ SOURCE 3: Bronx Veh2Num (Mobile) ============
 def get_bronx_veh2num(rc_number):
     try:
         url = f"{BRONX_VEH2NUM_API}?key=op&vehicle={rc_number}"
-        resp = requests.get(url, timeout=15)
+        resp = requests.get(url, timeout=20)
         data = resp.json()
+        # Remove proxy
+        if isinstance(data, dict) and '_proxy' in data:
+            del data['_proxy']
+        
+        # Extract mobile number
         if data and data.get('mobile_number'):
             return data.get('mobile_number')
         if data and isinstance(data, dict):
-            for key in ['mobile_number', 'mobile', 'phone', 'number', 'owner_number']:
+            for key in ['mobile_number', 'mobile', 'phone', 'number', 'owner_number', 'result']:
                 if data.get(key):
-                    return str(data[key])
+                    val = data[key]
+                    if isinstance(val, str) and val.isdigit() and len(val) == 10:
+                        return val
+                    elif isinstance(val, dict):
+                        for k in ['mobile', 'phone', 'number']:
+                            if val.get(k):
+                                return str(val[k])
         return None
     except:
         return None
 
-# ============ SOURCE 4: VahanX Scraper ============
+# ============ SOURCE 4: UmmmyM (SLOW - 30 sec timeout) ============
+def get_ummym_data(rc_number):
+    try:
+        url = f"{UMMMYM_API}?rc={rc_number}"
+        resp = requests.get(url, timeout=35)  # Extra timeout for slow API
+        data = resp.json()
+        if data:
+            # Remove proxy info
+            if isinstance(data, dict) and '_proxy' in data:
+                del data['_proxy']
+            # Deep clean nested proxy
+            if isinstance(data, dict):
+                for key in list(data.keys()):
+                    if isinstance(data[key], dict) and '_proxy' in data[key]:
+                        del data[key]['_proxy']
+            return data
+        return None
+    except:
+        return None
+
+# ============ SOURCE 5: VahanX Scraper ============
 def get_vahanx_data(rc_number):
     url = f"https://vahanx.in/rc-search/{rc_number}"
     headers = {"User-Agent": "Mozilla/5.0 (Linux; Android 10) AppleWebKit/537.36"}
     try:
-        resp = requests.get(url, headers=headers, timeout=15)
+        resp = requests.get(url, headers=headers, timeout=20)
         soup = BeautifulSoup(resp.text, "html.parser")
         text = soup.get_text()
         
@@ -156,12 +194,12 @@ def get_vahanx_data(rc_number):
     except:
         return {}
 
-# ============ SOURCE 5: CarInfo RTO ============
+# ============ SOURCE 6: CarInfo RTO ============
 def get_carinfo_rto(rc_number):
     url = f"https://www.carinfo.app/rto-vehicle-registration-detail/rto-details/{rc_number}"
     headers = {"User-Agent": "Mozilla/5.0"}
     try:
-        resp = requests.get(url, headers=headers, timeout=15)
+        resp = requests.get(url, headers=headers, timeout=20)
         soup = BeautifulSoup(resp.text, "html.parser")
         info = {}
         match = re.match(r'^([A-Z]{2}\d{2})', rc_number)
@@ -200,12 +238,33 @@ def rc_lookup():
             "credit": CREDIT
         }), 400
     
-    # Fetch from ALL sources
-    ft = get_ft_osint(rc_number)
-    worker = get_workers_data(rc_number)
-    v2n = get_bronx_veh2num(rc_number)
-    vx = get_vahanx_data(rc_number)
-    rto = get_carinfo_rto(rc_number)
+    # PARALLEL FETCHING - All sources ek saath
+    results = {}
+    
+    with ThreadPoolExecutor(max_workers=6) as executor:
+        futures = {
+            executor.submit(get_leakapi_vehicle, rc_number): 'leakapi_vehicle',
+            executor.submit(get_leakapi_reg, rc_number): 'leakapi_registration',
+            executor.submit(get_bronx_veh2num, rc_number): 'veh2num_mobile',
+            executor.submit(get_ummym_data, rc_number): 'ummym',
+            executor.submit(get_vahanx_data, rc_number): 'vahanx',
+            executor.submit(get_carinfo_rto, rc_number): 'carinfo_rto',
+        }
+        
+        for future in as_completed(futures):
+            source_name = futures[future]
+            try:
+                results[source_name] = future.result(timeout=40)
+            except:
+                results[source_name] = None
+    
+    # Extract results
+    leakapi_v = results.get('leakapi_vehicle')
+    leakapi_r = results.get('leakapi_registration')
+    v2n = results.get('veh2num_mobile')
+    ummym = results.get('ummym')
+    vx = results.get('vahanx')
+    rto = results.get('carinfo_rto')
     
     response_time = round(time.time() - start_time, 2)
     
@@ -218,110 +277,79 @@ def rc_lookup():
         "response_time_seconds": response_time,
         "timestamp": datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
         "sources": {
-            "bronx": "✅" if ft else "❌",
-            "workers_api": "✅" if worker else "❌",
-            "veh2num": "✅" if v2n else "❌",
-            "ultra": "✅" if vx else "❌",
-            "carinfo": "✅" if rto else "❌"
+            "leakapi_vehicle": "✅" if leakapi_v else "❌",
+            "leakapi_registration": "✅" if leakapi_r else "❌",
+            "veh2num_mobile": "✅" if v2n else "❌",
+            "ummym": "✅" if ummym else "❌",
+            "vahanx_scraper": "✅" if vx else "❌",
+            "carinfo_rto": "✅" if rto else "❌"
         }
     }
     
-    # ============ FT-OSINT DATA ============
-    if ft:
-        ft_owner = ft.get("owner", {})
-        ft_addr = ft.get("address", {})
-        ft_reg = ft.get("registration", {})
-        ft_vehicle = ft.get("vehicle", {})
-        ft_insurance = ft.get("insurance", {})
-        ft_ident = ft.get("identification", {})
-        ft_financier = ft.get("financier", {})
-        ft_fitness = ft.get("fitness", {})
-        ft_puc = ft.get("puc", {})
-        ft_rto_contact = ft.get("rto_contact", {})
-        
-        result["ft_osint"] = {
-            "owner_name": ft_owner.get("name"),
-            "father_name": ft_owner.get("father_name"),
-            "present_address": ft_addr.get("present"),
-            "permanent_address": ft_addr.get("permanent"),
-            "city": ft_addr.get("city"),
-            "pincode": ft_addr.get("pincode"),
-            "state": ft_addr.get("state"),
-            "rto_code": ft_reg.get("rto_code"),
-            "rto_name": ft_reg.get("rto"),
-            "authority": ft_reg.get("authority"),
-            "reg_date": ft_reg.get("date"),
-            "manufacturer": ft_vehicle.get("manufacturer"),
-            "model": ft_vehicle.get("model"),
-            "variant": ft_vehicle.get("variant"),
-            "fuel_type": ft_vehicle.get("fuel"),
-            "engine_cc": ft_vehicle.get("cc"),
-            "vehicle_class": ft_vehicle.get("class"),
-            "seating_capacity": ft_vehicle.get("seating"),
-            "vehicle_type": ft_vehicle.get("type"),
-            "commercial": ft_vehicle.get("commercial"),
-            "chassis_number": ft_ident.get("chassis"),
-            "engine_number": ft_ident.get("engine"),
-            "insurance_company": ft_insurance.get("company"),
-            "insurance_valid_upto": ft_insurance.get("valid_upto"),
-            "insurance_expired": ft_insurance.get("expired"),
-            "insurance_policy_no": ft_insurance.get("policy_no"),
-            "financier_name": ft_financier.get("name"),
-            "fitness_valid_upto": ft_fitness.get("fitness_upto"),
-            "tax_valid_upto": ft_fitness.get("tax_upto"),
-            "puc_valid_upto": ft_puc.get("valid_upto"),
-            "puc_number": ft_puc.get("no"),
-            "rto_phone": ft_rto_contact.get("phone")
-        }
-        # Remove None values
-        result["ft_osint"] = {k: v for k, v in result["ft_osint"].items() if v}
+    # ============ LEAKAPI VEHICLE DATA ============
+    if leakapi_v:
+        result["leakapi_vehicle"] = leakapi_v
     
-    # ============ WORKERS API DATA ============
-    if worker:
-        result["workers_api"] = worker
+    # ============ LEAKAPI REGISTRATION DATA ============
+    if leakapi_r:
+        result["leakapi_registration"] = leakapi_r
+    
+    # ============ UMMMYM DATA ============
+    if ummym:
+        result["ummym"] = ummym
     
     # ============ MOBILE NUMBER ============
-    mobile = v2n or (vx.get("phone") if vx else None)
-    if mobile:
-        result["mobile_number"] = mobile
+    if v2n:
+        result["mobile_number"] = v2n
     
     # ============ VAHANX DATA ============
     if vx:
         vx_clean = {k: v for k, v in vx.items() if v}
         if vx_clean:
-            result["vahanx"] = vx_clean
+            result["vahanx_scraper"] = vx_clean
     
     # ============ CARINFO RTO DATA ============
     if rto:
         result["carinfo_rto"] = rto
     
     # ============ MERGED SUMMARY ============
+    # Extract best data from all sources
+    owner_name = "N/A"
+    model = "N/A"
+    fuel = "N/A"
+    reg_date = "N/A"
+    rto_name = "N/A"
+    
+    # LeakAPI se
+    if leakapi_v:
+        if isinstance(leakapi_v, dict):
+            owner_name = leakapi_v.get('owner_name') or leakapi_v.get('owner') or owner_name
+            model = leakapi_v.get('model') or leakapi_v.get('vehicle_model') or model
+            fuel = leakapi_v.get('fuel') or leakapi_v.get('fuel_type') or fuel
+            reg_date = leakapi_v.get('registration_date') or leakapi_v.get('reg_date') or reg_date
+            rto_name = leakapi_v.get('rto') or leakapi_v.get('rto_name') or rto_name
+    
+    # UmmmyM se
+    if ummym and isinstance(ummym, dict):
+        owner_name = ummym.get('owner_name') or ummym.get('owner') or owner_name
+        model = ummym.get('model') or ummym.get('vehicle_model') or model
+        fuel = ummym.get('fuel') or ummym.get('fuel_type') or fuel
+    
+    # VahanX se
+    if vx:
+        owner_name = vx.get('owner_name') or owner_name
+        model = vx.get('model') or model
+        fuel = vx.get('fuel') or fuel
+        reg_date = vx.get('reg_date') or reg_date
+        rto_name = vx.get('rto') or rto_name
+    
     result["📋_summary"] = {
-        "owner_name": (
-            (ft.get("owner", {}).get("name") if ft else None) or
-            (worker.get("owner_name") if worker else None) or
-            (vx.get("owner_name") if vx else None) or "N/A"
-        ),
-        "mobile_number": mobile or "N/A",
-        "model": (
-            (ft.get("vehicle", {}).get("model") if ft else None) or
-            (worker.get("model") if worker else None) or
-            (vx.get("model") if vx else None) or "N/A"
-        ),
-        "fuel_type": (
-            (ft.get("vehicle", {}).get("fuel") if ft else None) or
-            (worker.get("fuel_type") if worker else None) or
-            (vx.get("fuel") if vx else None) or "N/A"
-        ),
-        "registration_date": (
-            (ft.get("registration", {}).get("date") if ft else None) or
-            (worker.get("registration_date") if worker else None) or
-            (vx.get("reg_date") if vx else None) or "N/A"
-        ),
-        "rto_name": (
-            (ft.get("registration", {}).get("rto") if ft else None) or
-            (vx.get("rto") if vx else None) or "N/A"
-        )
+        "owner_name": owner_name,
+        "mobile_number": v2n or "N/A",
+        "model": model,
+        "fuel_type": fuel,
+        "registration_date": reg_date,
+        "rto_name": rto_name
     }
     
     return jsonify(result)
@@ -332,16 +360,18 @@ def rc_lookup():
 @app.route('/test')
 def test():
     return jsonify({
-        "status": "✅ BRONX RC API V7 ONLINE",
-        "version": "7.0 ALL-IN-ONE",
+        "status": "✅ BRONX RC API V8 ONLINE",
+        "version": "8.0 ALL-IN-ONE",
         "endpoint": "/rc?num=MH02FZ0555",
         "sources": [
-            "bronx",
-            "Workers API (vehicleinfo)",
-            "Bronx❤️",
-            "bronx Scraper",
+            "LeakAPI Vehicle",
+            "LeakAPI Registration",
+            "Veh2Num Mobile",
+            "UmmmyM",
+            "VahanX Scraper",
             "CarInfo RTO"
         ],
+        "note": "UmmmyM API slow hai (15-30 sec) - parallel fetching se manage",
         "credit": CREDIT
     })
 
@@ -358,8 +388,9 @@ def not_found(e):
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 3000))
     print(f"""
-    🚗 BRONX RC API V7 - ALL IN ONE
+    🚗 BRONX RC API V8 - ALL IN ONE
     📍 Port: {port}
     💡 Usage: /rc?num=MH02FZ0555
+    🔄 Sources: LeakAPI ×2 | Veh2Num | UmmmyM | VahanX | CarInfo
     """)
     app.run(host='0.0.0.0', port=port)
